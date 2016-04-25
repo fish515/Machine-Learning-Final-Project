@@ -1,0 +1,91 @@
+---
+title: "Machine Learning Project"
+author: "Hongyu Shen"
+date: "April 24, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+###Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+## Get and cleanup data
+First load the library and download files
+```{r}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+library(knitr)
+trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+training <- read.csv(url(trainUrl), na.strings=c("NA","#DIV/0!",""))
+testing <- read.csv(url(testUrl), na.strings=c("NA","#DIV/0!",""))
+```
+
+First is to remove the NA and some features that are not the testing data.After looking at the summary of the data, the first of 7 features are irrelevant. 
+```{r}
+features <- names(testing[,colSums(is.na(testing)) == 0])[8:59]
+training<-training[,c(features,"classe")]
+testing<-testing[,c(features,"problem_id")]
+dim(training);dim(testing);
+```
+
+Then I randomly split the training data into two smaller training sets.
+```{r,echo=TRUE,eval=TRUE}
+set.seed(12345)
+inTrain<-createDataPartition(training$classe, p=0.6, list=FALSE)
+myTraining <- training[inTrain, ]
+myTesting <- training[-inTrain, ]
+dim(myTraining);dim(myTesting);
+```
+
+##Tree model
+I select decision tree for prediction in this part, the decision tree won't has a good accuracy.
+```{r}
+modFitTD <- rpart(classe ~ ., data = myTraining, method="class")
+fancyRpartPlot(modFitTD)
+```
+Predicting:
+```{r}
+predictions <- predict(modFitTD, myTesting, type = "class")
+confusionMatrix(predictions, myTesting$classe)
+```
+The decision tree modek has a accuracy of 72%.
+
+## Random Forest Model
+
+```{r}
+modFitRF <- randomForest(classe ~ ., data = myTraining)
+predictionsRF<- predict(modFitRF, myTesting, type = "class")
+confusionMatrix(predictionsRF, myTesting$classe)
+```
+From the above results, we can see that random forest has a bigger accuracy and generate a better results than decision tree. Random forest model has a accuracy about 99%.
+
+## Predicting Results on Test Data
+Since Random Forest has the largest accuracy, I will use random forest to predict 20 quiz results.
+
+```{r}
+predictionsQuiz<- predict(modFitRF, testing, type = "class")
+predictionsQuiz
+```
+
+
